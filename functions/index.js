@@ -6,11 +6,21 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 /**
- * Triggered wher a new user is created
+ * Triggered when a new user is created
  * Action: creates the user's register on Firestore
  */
 exports.onNewUserCreated = functions.auth.user().onCreate((user) => {
-    
+    admin.firestore().collection("users").doc(user.uid).create({
+        answers: []
+    })
+});
+
+/**
+ * Triggered when an user is deleted
+ * Action: delete user's register from Firestore
+ */
+exports.onDeletedUser = functions.auth.user().onDelete((user) => {
+    admin.firestore().collection("users").doc(user.uid).delete();
 });
 
 /**
