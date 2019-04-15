@@ -3,7 +3,11 @@ const functions = require('firebase-functions');
 
 // The Firebase Admin SDK to access the Firebase Realtime Database.
 const admin = require('firebase-admin');
-admin.initializeApp();
+const servicesAccount = require('./service-account.json');
+admin.initializeApp({
+    credential: admin.credential.cert(servicesAccount),
+    storageBucket: "interviewme-eed96.appspot.com"
+});
 
 /**
  * Triggered when a new user is created
@@ -28,5 +32,18 @@ exports.onDeletedUser = functions.auth.user().onDelete((user) => {
  * Action: create object's register on Firestore (it can be a question or an user's recorded answer)
  */
 exports.onNewAudioUploaded = functions.storage.object().onFinalize((obj) => {
-    console.log("Audio id = " + obj.id);
+    // If it was uploaded on the questions folder, so it's an audio and it should be
+    // saved on the question collection
+    if(obj.name.includes("questions/")) {
+        admin.storage().bucket().file(obj.name).getSignedUrl({
+            action: 'read',
+            expires: '03-09-2100'
+        })
+        .then(signedUrls => {
+            admin.firestore().collection("questions").doc().create({
+                name: obj.name,
+                downloadUrl: signedUrls[0]
+            })
+        })
+    }
 });
