@@ -15,7 +15,7 @@ admin.initializeApp({
  */
 exports.onNewUserCreated = functions.auth.user().onCreate((user) => {
     admin.firestore().collection("users").doc(user.uid).create({
-        answers: []
+        interviews: []
     })
 });
 
@@ -45,33 +45,11 @@ exports.onNewAudioUploaded = functions.storage.object().onFinalize((obj) => {
                 downloadUrl: signedUrls[0]
             })
         })
-        .then(documentData => {
+        .then(result => {
             console.log("Saved question on Firestore");
         })
         .catch(error => {
             console.error("Error saving question on Firestore: " + error);
-        })
-    }
-    // Otherwise, it's an user's answer file and a reference to it should be registered on the
-    // users collection on Firestore
-    else {
-        admin.storage().bucket().file(obj.name).getSignedUrl({
-            action: 'read',
-            expires: '03-09-2100'
-        })
-        .then(signedUrls => {
-            return admin.firestore().collection('users').doc(obj.metadata.customMetadata.user_uid).update({
-                answers: FirebaseFirestore.FieldValue.arrayUnion({
-                    questionId: obj.metadata.customMetadata.question_id,
-                    downloadUrl: signedUrls[0]
-                })
-            })
-        })
-        .then(result => {
-            console.log("Saved user's answer on Firestore")
-        })
-        .catch(error => {
-            console.error("Error saving user's answer on Firestore: " + error);
         })
     }
 });
