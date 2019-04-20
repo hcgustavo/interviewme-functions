@@ -53,3 +53,61 @@ exports.onNewAudioUploaded = functions.storage.object().onFinalize((obj) => {
         })
     }
 });
+
+/**
+ * Listens for deletion of an interview from user's list
+ */
+exports.onUserInterviewDeleted = functions.firestore.document('/users/{userUid}').onUpdate((snap) => {
+    let before = snap.before.data();
+    let after = snap.after.data();
+
+    // Get id of deleted interview
+    if(after.interviews.length < before.interviews.length) {
+        let removedId = "";
+        before.interviews.forEach(interview => {
+            if(!after.interviews.includes(interview)) {
+                removedId = interview;
+            }
+        })
+
+        admin.firestore().collection('interviews').doc(removedId).delete()
+        .then(deleteResult => {
+            console.log(`Deleted ${removedId} from 'interviews' collection`);
+        })
+        .catch(error => {
+            console.error(`Error deleting ${removedId} from 'interviews' collection: ` + error);
+        })
+    }
+});
+
+/**
+ * Listens for deletion of an interview from interviews collection
+ */
+exports.onInterviewDeleted = functions.firestore.document('/interviews/{interviewId}').onDelete((snap) => {
+    let answersToDeletePromises = [];
+    snap.data().answers.forEach(answer => {
+        answersToDeletePromises.push(admin.firestore().collection('answers').doc(answer).delete());
+    })
+    Promise.all(answersToDeletePromises)
+    .then(answersResults => {
+        console.log("Deleted answers from 'answers' collection");
+    })
+    .catch(error => {
+        console.error("Error deleting answers from 'answers' collection: " + error);
+    })
+
+});
+
+/**
+ * Listens from deletion of an answer from answers collection
+ */
+exports.onAnswerDeleted = functions.firestore.document('/answers/{answerId}').onDelete((snap) => {
+    let name = snap.data().name;
+    admin.storage().bucket().file(name).delete()
+    .then(deleteResult => {
+        console.log(`Deleted file ${name} from storage`);
+    })
+    .catch(error => {
+        console.error(`Error deleting file ${name} from storage`);
+    })
+});
